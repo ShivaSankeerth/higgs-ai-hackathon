@@ -19,26 +19,24 @@ Practice against AI-powered prospect personas in real-time voice conversations.
 
 ### 2. Call Review & Coaching
 AI-powered analysis, scoring, and actionable feedback on sales calls.
-- **Input** — recorded roleplay sessions or uploaded real call recordings
 - **Transcription** — full audio-to-text with speaker identification
-- **Scoring** — performance rated across key dimensions (opener, discovery, objection handling, close)
-- **Coaching feedback** — specific, actionable suggestions with timestamps
-- **Progress tracking** — see improvement trends over time
+- **Scoring** — performance rated across 6 dimensions (opener, discovery, objection handling, value articulation, closing, active listening)
+- **Coaching feedback** — specific, actionable suggestions referencing conversation moments
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────┐
-│              Frontend (React/Next.js)        │
+│              Frontend (Next.js)              │
 │  ┌──────────────┐  ┌─────────────────────┐  │
 │  │ Roleplay UI  │  │ Call Review UI      │  │
-│  │ - Mic input   │  │ - Upload/select call│  │
-│  │ - Live audio  │  │ - Transcript view   │  │
-│  │ - AI prospect │  │ - Scoring dashboard │  │
-│  │   responses   │  │ - Coaching feedback │  │
+│  │ - Mic input   │  │ - Transcript view   │  │
+│  │ - Live audio  │  │ - Scoring dashboard │  │
+│  │ - AI prospect │  │ - Coaching feedback │  │
+│  │   responses   │  │                     │  │
 │  └──────────────┘  └─────────────────────┘  │
 └──────────────────┬──────────────────────────┘
-                   │
+                   │ WebSocket + REST
                    ▼
 ┌─────────────────────────────────────────────┐
 │           Backend (Python/FastAPI)            │
@@ -52,43 +50,93 @@ AI-powered analysis, scoring, and actionable feedback on sales calls.
 │         │                    │               │
 │         ▼                    ▼               │
 │  ┌──────────────────────────────────────┐   │
-│  │     Higgs API Integration Layer      │   │
-│  │  (STT / TTS / LLM — TBD)            │   │
+│  │     Higgs / Boson AI Integration     │   │
+│  │  STT: higgs-audio-understanding      │   │
+│  │  TTS: higgs-audio-generation          │   │
+│  │  LLM: Qwen3-32B-non-thinking         │   │
 │  └──────────────────────────────────────┘   │
 └─────────────────────────────────────────────┘
 ```
 
-## Tech Stack (Tentative)
+## Tech Stack
 - **Frontend**: Next.js + React + TailwindCSS
 - **Backend**: Python + FastAPI
-- **Audio**: WebRTC / MediaRecorder API for browser audio capture
-- **AI/Audio APIs**: Higgs-specific (pending API docs)
-- **Database**: SQLite (hackathon scope) or PostgreSQL
+- **Audio**: WebSocket streaming + MediaRecorder API
+- **AI/Audio APIs**: Boson AI / Higgs models (ASR, TTS, LLM)
+- **Deployment**: Docker Compose (2 services: frontend + backend)
 
-## Implementation Phases
+## Project Structure
 
-### Phase 1: Project Setup
-- Initialize frontend and backend projects
-- Set up project structure, shared types, environment config
+```
+├── api.py                          # FastAPI server (WebSocket + REST)
+├── requirements.txt                # Python dependencies
+├── Dockerfile.backend              # Backend container
+├── docker-compose.yml              # 2-service orchestration
+├── .env.example                    # API key config template
+├── backend/
+│   ├── simulator.py               # Core roleplay engine (STT → LLM → TTS)
+│   ├── prospect.py                # AI prospect persona generation
+│   ├── scenario.py                # Sales scenario parameter generation
+│   ├── analyze_call.py            # Post-call scoring & coaching
+│   ├── llm.py                     # Higgs/Boson AI model integration
+│   ├── session.py                 # Context-isolated sessions
+│   ├── utils.py                   # Emotion templates + helpers
+│   ├── _types.py                  # Data models
+│   ├── prompts/
+│   │   ├── init_simulation.txt    # Prospect roleplay system prompt
+│   │   ├── init_prospect.txt      # Prospect persona generator
+│   │   ├── init_scenario.txt      # Scenario parameter instantiation
+│   │   ├── generate_response.txt  # Turn-by-turn response instructions
+│   │   └── summary_prompt.txt     # Post-call evaluation rubric
+│   └── data/
+│       ├── params.json            # Scenario parameters (roles, industries, objections)
+│       └── emotion_templates.json # Prospect mood voice templates
+└── frontend/
+    ├── Dockerfile                 # Frontend container
+    ├── app/
+    │   ├── page.tsx               # Landing page
+    │   ├── simulate/page.tsx      # Live call UI (mic + WebSocket)
+    │   └── review/page.tsx        # Transcript + coaching feedback
+    └── lib/
+        └── api.ts                 # Backend API client
+```
 
-### Phase 2: Core Roleplay Engine
-- Browser audio capture
-- STT -> LLM -> TTS pipeline via Higgs APIs
-- Prospect persona system
-- Real-time conversation loop
-- Session recording and storage
+## Getting Started
 
-### Phase 3: Call Review System
-- Audio upload/selection UI
-- Transcription pipeline
-- Scoring rubric engine
-- Coaching feedback generation
-- Review dashboard UI
+### Prerequisites
+- Python 3.11+
+- Node.js 20+
+- A Boson AI / Higgs API key
 
-### Phase 4: Polish
-- Pre-built scenario library
-- Performance tracking dashboard
-- UI/UX polish for demo
+### Quick Start
+
+1. **Clone and configure**
+   ```bash
+   git clone <repo-url> && cd higgs-ai-hackathon
+   cp .env.example .env
+   # Edit .env and add your API_KEY and BASE_URL
+   ```
+
+2. **Run the backend**
+   ```bash
+   pip install -r requirements.txt
+   uvicorn api:app --host 0.0.0.0 --port 8000
+   ```
+
+3. **Run the frontend** (in a separate terminal)
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+4. Open http://localhost:3000
+
+### Docker (alternative)
+```bash
+docker-compose up
+```
+Frontend on `:3000`, backend on `:8000`.
 
 ## Status
-Early stage — awaiting Higgs API documentation to finalize integration approach and tech stack details.
+MVP complete — core roleplay engine and review system are functional.
