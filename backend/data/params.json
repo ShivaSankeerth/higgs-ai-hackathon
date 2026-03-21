@@ -1,0 +1,50 @@
+{
+    "user": {
+        "prospect": {
+            "prospect_role": [
+                "cfo", "cto", "vp_sales", "vp_marketing", "vp_engineering",
+                "director_operations", "director_it", "procurement_manager",
+                "ceo_founder", "product_manager", "hr_director", "line_manager"
+            ],
+            "industry": [
+                "saas_technology", "financial_services", "healthcare",
+                "manufacturing", "retail_ecommerce", "education",
+                "real_estate", "consulting", "media_entertainment",
+                "logistics_supply_chain", "government", "nonprofit"
+            ],
+            "gender": ["male", "female"],
+            "mood": ["neutral", "skeptical", "interested", "impatient", "friendly", "hostile", "confused"]
+        },
+        "deal": {
+            "objection_type": [
+                "price_too_high", "already_have_solution", "not_the_right_time",
+                "need_to_talk_to_others", "dont_see_the_value", "bad_past_experience",
+                "competitor_preference", "too_complex", "budget_frozen",
+                "just_browsing", "contract_locked_in"
+            ],
+            "deal_stage": [
+                "cold_outreach", "discovery_call", "demo_followup",
+                "proposal_review", "negotiation", "renewal_upsell"
+            ]
+        }
+    },
+    "system": {
+        "deal_context": {
+            "deal_size": ["small_under_10k", "mid_10k_50k", "large_50k_200k", "enterprise_200k_plus"],
+            "decision_timeline": ["urgent_this_week", "this_month", "this_quarter", "no_rush", "evaluating"],
+            "buying_committee_size": ["solo_decision", "two_to_three", "four_to_six", "large_committee"],
+            "budget_status": ["approved", "pending_approval", "no_budget", "end_of_year_surplus"]
+        },
+        "prospect_context": {
+            "company_size": ["startup_1_50", "smb_50_200", "mid_market_200_1000", "enterprise_1000_plus"],
+            "tech_savviness": ["low", "moderate", "high"],
+            "prior_contact": ["first_touch", "follow_up", "re_engagement", "inbound_lead"],
+            "pain_severity": ["mild_inconvenience", "moderate_problem", "critical_business_issue", "hair_on_fire"]
+        },
+        "conversation_dynamics": {
+            "prospect_talkativeness": ["terse", "balanced", "verbose"],
+            "willingness_to_engage": ["open", "cautious", "resistant", "hostile"],
+            "call_progression": ["warms_up", "cools_down", "stable", "sudden_hangup", "asks_for_meeting"]
+        }
+    }
+}

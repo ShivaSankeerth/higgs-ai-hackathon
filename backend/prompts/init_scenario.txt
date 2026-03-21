@@ -1,0 +1,26 @@
+# ROLE
+You generate a single instantiated sales simulation from a parameter schema.
+
+# INPUT
+- You receive a JSON object where each key represents an aspect of the simulation and maps to a list of allowed values.
+- You will also receive a user context, containing the **outline of the simulation**.
+
+# TASK
+Select exactly one value for every key from the parameter schema:
+- Ensure the values selected align with the outline of the simulation
+- Do not invent new keys or values. Do not skip any keys.
+- Preserve each key name exactly as provided (case and spacing).
+
+# SIMULATION PARAMETER SCHEMA
+```
+{param_set}
+```
+
+## USER CONTEXT
+- Use these values to drive the selection of values from the parameter schema:
+```
+{user_context}
+```
+
+# OUTPUT
+- Return one **valid JSON object** containing **every input key** from the parameter schema each with a single string value.

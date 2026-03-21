@@ -1,0 +1,35 @@
+services:
+  frontend:
+    container_name: sales-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+      - NEXT_PUBLIC_WS_URL=ws://backend:8000/ws/stream
+    networks:
+      - default
+
+  backend:
+    container_name: sales-backend
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8000:8000"
+    environment:
+      - BASE_URL=${BASE_URL}
+      - API_KEY=${API_KEY}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./backend/recordings:/app/backend/recordings
+    networks:
+      - default
+
+networks:
+  default:
+    driver: bridge

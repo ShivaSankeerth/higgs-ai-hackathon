@@ -1,0 +1,72 @@
+{
+    "neutral": {
+        "male": [
+            {"file_name": "neutral_male_1", "transcript": "Sure, I have a few minutes. What did you want to discuss?"},
+            {"file_name": "neutral_male_2", "transcript": "Go ahead, I'm listening."}
+        ],
+        "female": [
+            {"file_name": "neutral_female_1", "transcript": "Sure, I have a few minutes. What did you want to discuss?"},
+            {"file_name": "neutral_female_2", "transcript": "Go ahead, I'm listening."}
+        ]
+    },
+    "skeptical": {
+        "male": [
+            {"file_name": "skeptical_male_1", "transcript": "I've heard this pitch before. What makes you different?"},
+            {"file_name": "skeptical_male_2", "transcript": "I'm not sure this is really what we need right now."}
+        ],
+        "female": [
+            {"file_name": "skeptical_female_1", "transcript": "I've heard this pitch before. What makes you different?"},
+            {"file_name": "skeptical_female_2", "transcript": "I'm not sure this is really what we need right now."}
+        ]
+    },
+    "interested": {
+        "male": [
+            {"file_name": "interested_male_1", "transcript": "That's interesting, tell me more about how that would work for us."},
+            {"file_name": "interested_male_2", "transcript": "We've actually been looking into something like this."}
+        ],
+        "female": [
+            {"file_name": "interested_female_1", "transcript": "That's interesting, tell me more about how that would work for us."},
+            {"file_name": "interested_female_2", "transcript": "We've actually been looking into something like this."}
+        ]
+    },
+    "impatient": {
+        "male": [
+            {"file_name": "impatient_male_1", "transcript": "Look, I've got about five minutes. Get to the point."},
+            {"file_name": "impatient_male_2", "transcript": "Can you just give me the bottom line here?"}
+        ],
+        "female": [
+            {"file_name": "impatient_female_1", "transcript": "Look, I've got about five minutes. Get to the point."},
+            {"file_name": "impatient_female_2", "transcript": "Can you just give me the bottom line here?"}
+        ]
+    },
+    "friendly": {
+        "male": [
+            {"file_name": "friendly_male_1", "transcript": "Hey, thanks for reaching out! I'm happy to chat."},
+            {"file_name": "friendly_male_2", "transcript": "That sounds great. I'd love to learn more."}
+        ],
+        "female": [
+            {"file_name": "friendly_female_1", "transcript": "Hey, thanks for reaching out! I'm happy to chat."},
+            {"file_name": "friendly_female_2", "transcript": "That sounds great. I'd love to learn more."}
+        ]
+    },
+    "hostile": {
+        "male": [
+            {"file_name": "hostile_male_1", "transcript": "Why are you even calling me? I told your colleague I'm not interested."},
+            {"file_name": "hostile_male_2", "transcript": "This is a waste of my time. We tried something like this and it was a disaster."}
+        ],
+        "female": [
+            {"file_name": "hostile_female_1", "transcript": "Why are you even calling me? I told your colleague I'm not interested."},
+            {"file_name": "hostile_female_2", "transcript": "This is a waste of my time. We tried something like this and it was a disaster."}
+        ]
+    },
+    "confused": {
+        "male": [
+            {"file_name": "confused_male_1", "transcript": "I'm not really sure I understand what your product does exactly."},
+            {"file_name": "confused_male_2", "transcript": "Wait, how is this different from what we already have?"}
+        ],
+        "female": [
+            {"file_name": "confused_female_1", "transcript": "I'm not really sure I understand what your product does exactly."},
+            {"file_name": "confused_female_2", "transcript": "Wait, how is this different from what we already have?"}
+        ]
+    }
+}

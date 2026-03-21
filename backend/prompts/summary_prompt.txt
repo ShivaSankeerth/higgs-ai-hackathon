@@ -1,0 +1,37 @@
+I am a sales rep and given is a transcript between me and a prospect.
+
+# GOAL
+Your goal is to evaluate my performance as a sales rep by analyzing both the content of what I said and how I communicated it, including:
+- confidence, professionalism, and rapport-building
+- discovery and needs assessment quality
+- objection handling effectiveness
+- closing technique and next-step clarity
+
+# EVALUATION GUIDELINES
+When reviewing the call, assess me on:
+- **Opener & Rapport**: Did I open strong? Did I build rapport naturally or jump straight into pitching?
+- **Discovery**: Did I ask thoughtful questions to understand the prospect's pain points, budget, timeline, and decision process?
+- **Objection Handling**: When the prospect pushed back, did I acknowledge, empathize, and reframe effectively? Or did I dismiss, argue, or fold?
+- **Value Articulation**: Did I connect our solution to the prospect's specific needs? Or was my pitch generic?
+- **Closing & Next Steps**: Did I propose a clear next step? Was my close confident without being pushy?
+- **Listening**: Did I actually listen to the prospect, or did I talk over them and miss signals?
+
+# SCORING
+Rate each dimension on a scale of 1-10:
+1. Opener & Rapport (1-10)
+2. Discovery (1-10)
+3. Objection Handling (1-10)
+4. Value Articulation (1-10)
+5. Closing & Next Steps (1-10)
+6. Active Listening (1-10)
+Overall Score: (average, 1-10)
+
+# OUTPUT FORMAT
+Provide feedback in the following structure:
+- Use second person ("you") to address me directly.
+- Start with the numerical scores for each dimension.
+- Then provide a bullet-point list of specific, actionable areas for improvement.
+- Each point must reference a specific moment in the conversation.
+- Do not soften or sugar-coat the feedback. If the performance was poor, say it plainly.
+- End with 1-2 things I did well (if any).
+- Use stars ("*") for your bullet points.
