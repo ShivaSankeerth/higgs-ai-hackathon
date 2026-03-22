@@ -12,16 +12,18 @@ An AI-powered sales training platform with two core capabilities:
 
 ### 1. Voice Roleplay Simulation
 Practice against AI-powered prospect personas in real-time voice conversations.
-- **Scenario selection** — choose prospect personas (skeptical CFO, technical buyer, budget-conscious VP, etc.)
+- **Scenario selection** — choose prospect role, industry, mood, objection type, and deal stage
 - **Real-time voice interaction** — speak naturally, get realistic AI prospect responses
-- **Configurable scenarios** — objections, personality traits, deal context, difficulty level
-- **Session recording** — every practice session is saved for later review
+- **Mic locking** — mic disables while the prospect is speaking, just like a real call
+- **Live transcript** — conversation updates in real time after each exchange
 
 ### 2. Call Review & Coaching
 AI-powered analysis, scoring, and actionable feedback on sales calls.
-- **Transcription** — full audio-to-text with speaker identification
-- **Scoring** — performance rated across 6 dimensions (opener, discovery, objection handling, value articulation, closing, active listening)
-- **Coaching feedback** — specific, actionable suggestions referencing conversation moments
+- **Auto-loaded transcript** — collapsible call history shown immediately on the review page
+- **Overall score** — animated ring indicator (1–10) with color coding
+- **Dimension breakdown** — scored across 6 dimensions with color-coded bars and per-dimension feedback
+- **Improvement cards** — specific, actionable notes referencing moments in the call, tagged by dimension
+- **Highlights** — what you actually did well
 
 ## Architecture
 
@@ -30,40 +32,51 @@ AI-powered analysis, scoring, and actionable feedback on sales calls.
 │              Frontend (Next.js)              │
 │  ┌──────────────┐  ┌─────────────────────┐  │
 │  │ Roleplay UI  │  │ Call Review UI      │  │
-│  │ - Mic input   │  │ - Transcript view   │  │
-│  │ - Live audio  │  │ - Scoring dashboard │  │
-│  │ - AI prospect │  │ - Coaching feedback │  │
-│  │   responses   │  │                     │  │
+│  │ - Mic input  │  │ - Score ring        │  │
+│  │ - WAV encode │  │ - Dimension cards   │  │
+│  │ - WS stream  │  │ - Coaching feedback │  │
 │  └──────────────┘  └─────────────────────┘  │
 └──────────────────┬──────────────────────────┘
                    │ WebSocket + REST
                    ▼
 ┌─────────────────────────────────────────────┐
-│           Backend (Python/FastAPI)            │
+│           Backend (Python/FastAPI)           │
 │  ┌──────────────┐  ┌─────────────────────┐  │
-│  │ Roleplay     │  │ Review Engine       │  │
-│  │ Engine       │  │ - Transcription     │  │
-│  │ - Session    │  │ - Analysis pipeline │  │
-│  │   management │  │ - Scoring rubric    │  │
-│  │ - Turn mgmt  │  │ - Feedback gen      │  │
+│  │ Simulator    │  │ AnalyzeCall         │  │
+│  │ - ASR turn   │  │ - Transcript → LLM  │  │
+│  │ - LLM resp   │  │ - JSON scoring      │  │
+│  │ - TTS reply  │  │ - 6-dim rubric      │  │
 │  └──────┬───────┘  └────────┬────────────┘  │
-│         │                    │               │
-│         ▼                    ▼               │
+│         │                   │               │
+│         ▼                   ▼               │
 │  ┌──────────────────────────────────────┐   │
-│  │     Higgs / Boson AI Integration     │   │
-│  │  STT: higgs-audio-understanding      │   │
-│  │  TTS: higgs-audio-generation          │   │
-│  │  LLM: Qwen3-32B-non-thinking         │   │
+│  │          Eigen AI Integration        │   │
+│  │  ASR: higgs_asr_3  (speech → text)   │   │
+│  │  TTS: higgs2p5     (text → speech)   │   │
+│  │  LLM: gpt-oss-120b (chat completion) │   │
 │  └──────────────────────────────────────┘   │
 └─────────────────────────────────────────────┘
 ```
 
+## Audio Pipeline
+
+```
+Browser mic → Web Audio API (ScriptProcessorNode)
+           → PCM samples → WAV encode (inline)
+           → base64 → WebSocket → backend
+           → higgs_asr_3 → transcript
+           → gpt-oss-120b → prospect response text
+           → higgs2p5 → WAV bytes
+           → base64 → WebSocket → browser
+           → HTML5 Audio playback
+```
+
 ## Tech Stack
 - **Frontend**: Next.js + React + TailwindCSS
-- **Backend**: Python + FastAPI
-- **Audio**: WebSocket streaming + MediaRecorder API
-- **AI/Audio APIs**: Boson AI / Higgs models (ASR, TTS, LLM)
-- **Deployment**: Docker Compose (2 services: frontend + backend)
+- **Backend**: Python + FastAPI + asyncio queues
+- **Audio**: WebSocket + Web Audio API (WAV, batch)
+- **AI APIs**: Eigen AI — `higgs_asr_3`, `higgs2p5`, `gpt-oss-120b`
+- **Deployment**: Docker Compose (frontend :3000, backend :8000)
 
 ## Project Structure
 
@@ -74,69 +87,66 @@ AI-powered analysis, scoring, and actionable feedback on sales calls.
 ├── docker-compose.yml              # 2-service orchestration
 ├── .env.example                    # API key config template
 ├── backend/
-│   ├── simulator.py               # Core roleplay engine (STT → LLM → TTS)
+│   ├── simulator.py               # Core roleplay engine (ASR → LLM → TTS)
 │   ├── prospect.py                # AI prospect persona generation
 │   ├── scenario.py                # Sales scenario parameter generation
-│   ├── analyze_call.py            # Post-call scoring & coaching
-│   ├── llm.py                     # Higgs/Boson AI model integration
-│   ├── session.py                 # Context-isolated sessions
-│   ├── utils.py                   # Emotion templates + helpers
+│   ├── analyze_call.py            # Post-call scoring & coaching (structured JSON)
+│   ├── llm.py                     # Eigen AI model integration
+│   ├── utils.py                   # Conversation memory helpers
 │   ├── _types.py                  # Data models
 │   ├── prompts/
 │   │   ├── init_simulation.txt    # Prospect roleplay system prompt
 │   │   ├── init_prospect.txt      # Prospect persona generator
 │   │   ├── init_scenario.txt      # Scenario parameter instantiation
 │   │   ├── generate_response.txt  # Turn-by-turn response instructions
-│   │   └── summary_prompt.txt     # Post-call evaluation rubric
+│   │   └── summary_prompt.txt     # Post-call evaluation rubric (JSON output)
 │   └── data/
-│       ├── params.json            # Scenario parameters (roles, industries, objections)
-│       └── emotion_templates.json # Prospect mood voice templates
+│       └── params.json            # Scenario parameters (roles, industries, objections)
 └── frontend/
     ├── Dockerfile                 # Frontend container
     ├── app/
     │   ├── page.tsx               # Landing page
     │   ├── simulate/page.tsx      # Live call UI (mic + WebSocket)
-    │   └── review/page.tsx        # Transcript + coaching feedback
+    │   └── review/page.tsx        # Coaching dashboard
     └── lib/
-        └── api.ts                 # Backend API client
+        └── api.ts                 # Backend API client + types
 ```
 
 ## Getting Started
 
 ### Prerequisites
-- Python 3.11+
-- Node.js 20+
-- A Boson AI / Higgs API key
+- Docker + Docker Compose (recommended)
+- An Eigen AI API key
 
-### Quick Start
+### Quick Start (Docker)
 
-1. **Clone and configure**
-   ```bash
-   git clone <repo-url> && cd higgs-ai-hackathon
-   cp .env.example .env
-   # Edit .env and add your API_KEY and BASE_URL
-   ```
-
-2. **Run the backend**
-   ```bash
-   pip install -r requirements.txt
-   uvicorn api:app --host 0.0.0.0 --port 8000
-   ```
-
-3. **Run the frontend** (in a separate terminal)
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
-
-4. Open http://localhost:3000
-
-### Docker (alternative)
 ```bash
-docker-compose up
+git clone <repo-url> && cd higgs-ai-hackathon
+cp .env.example .env
+# Add your API_KEY and BASE_URL to .env
+docker-compose up --build
 ```
-Frontend on `:3000`, backend on `:8000`.
+
+Frontend: http://localhost:3000 · Backend: http://localhost:8000
+
+### Manual Setup
+
+```bash
+# Backend
+pip install -r requirements.txt
+uvicorn api:app --host 0.0.0.0 --port 8000
+
+# Frontend (separate terminal)
+cd frontend && npm install && npm run dev
+```
+
+## Usage
+
+1. Go to **Practice Call** — configure your scenario (prospect role, industry, objection type, etc.)
+2. Click **Start Practice Call** — the AI prospect is initialized and the WebSocket connects
+3. Hold the mic button to speak, release to send — the prospect responds via audio
+4. Click **End Call** when done, then go to **Review & Get Coaching**
+5. The transcript auto-loads; click **Get AI Coaching Feedback** for the full analysis
 
 ## Status
-MVP complete — core roleplay engine and review system are functional.
+MVP complete — voice roleplay and structured coaching review are both functional.
