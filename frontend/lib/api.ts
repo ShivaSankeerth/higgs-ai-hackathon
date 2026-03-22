@@ -48,7 +48,25 @@ export async function getConversation(): Promise<{ data: ConversationLog[] }> {
   return res.json();
 }
 
-export async function analyzeConversation(): Promise<{ summary: string }> {
+export interface DimensionScore {
+  name: string;
+  score: number;
+  feedback: string;
+}
+
+export interface ImprovementPoint {
+  dimension: string;
+  point: string;
+}
+
+export interface CallAnalysis {
+  overall_score: number;
+  dimensions: DimensionScore[];
+  improvements: ImprovementPoint[];
+  highlights: string[];
+}
+
+export async function analyzeConversation(): Promise<{ analysis: CallAnalysis }> {
   const res = await fetch(`${API_URL}/analyze_conversation`);
   if (!res.ok) throw new Error("Failed to analyze conversation");
   return res.json();

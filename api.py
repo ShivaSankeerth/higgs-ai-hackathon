@@ -81,10 +81,10 @@ async def analyze_conversation():
     logs_snapshot = list(logs)
     ac = AnalyzeCall(call_logs=logs_snapshot)
     try:
-        summary = ac.generate_summary()
-    except IndexError as e:
+        analysis = ac.generate_summary()
+    except (IndexError, ValueError) as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return {"summary": summary}
+    return {"analysis": analysis}
 
 
 @app.post("/submit_form")

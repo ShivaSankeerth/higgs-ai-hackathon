@@ -1,37 +1,37 @@
-I am a sales rep and given is a transcript between me and a prospect.
+Evaluate the sales call transcript above and respond ONLY with a valid JSON object. No prose, no markdown fences, no extra keys.
 
-# GOAL
-Your goal is to evaluate my performance as a sales rep by analyzing both the content of what I said and how I communicated it, including:
-- confidence, professionalism, and rapport-building
-- discovery and needs assessment quality
-- objection handling effectiveness
-- closing technique and next-step clarity
+Use this exact schema:
 
-# EVALUATION GUIDELINES
-When reviewing the call, assess me on:
-- **Opener & Rapport**: Did I open strong? Did I build rapport naturally or jump straight into pitching?
-- **Discovery**: Did I ask thoughtful questions to understand the prospect's pain points, budget, timeline, and decision process?
-- **Objection Handling**: When the prospect pushed back, did I acknowledge, empathize, and reframe effectively? Or did I dismiss, argue, or fold?
-- **Value Articulation**: Did I connect our solution to the prospect's specific needs? Or was my pitch generic?
-- **Closing & Next Steps**: Did I propose a clear next step? Was my close confident without being pushy?
-- **Listening**: Did I actually listen to the prospect, or did I talk over them and miss signals?
+{
+  "overall_score": <number 1.0–10.0, one decimal place>,
+  "dimensions": [
+    {"name": "Opener & Rapport",     "score": <1–10>, "feedback": "<one concise sentence>"},
+    {"name": "Discovery",            "score": <1–10>, "feedback": "<one concise sentence>"},
+    {"name": "Objection Handling",   "score": <1–10>, "feedback": "<one concise sentence>"},
+    {"name": "Value Articulation",   "score": <1–10>, "feedback": "<one concise sentence>"},
+    {"name": "Closing & Next Steps", "score": <1–10>, "feedback": "<one concise sentence>"},
+    {"name": "Active Listening",     "score": <1–10>, "feedback": "<one concise sentence>"}
+  ],
+  "improvements": [
+    {"dimension": "<dimension name>", "point": "<specific actionable note referencing a moment in the call>"},
+    ...
+  ],
+  "highlights": [
+    "<something the sales rep did well, referencing a specific moment>",
+    ...
+  ]
+}
 
-# SCORING
-Rate each dimension on a scale of 1-10:
-1. Opener & Rapport (1-10)
-2. Discovery (1-10)
-3. Objection Handling (1-10)
-4. Value Articulation (1-10)
-5. Closing & Next Steps (1-10)
-6. Active Listening (1-10)
-Overall Score: (average, 1-10)
+Scoring guidelines:
+- Opener & Rapport: Did the rep open strong and build rapport naturally before pitching?
+- Discovery: Did they uncover the prospect's pain, budget, timeline, and decision process?
+- Objection Handling: Did they acknowledge, empathize, and reframe pushback — or dismiss and fold?
+- Value Articulation: Did they tie the solution to the prospect's specific needs, or pitch generically?
+- Closing & Next Steps: Did they propose a clear, confident next step without being pushy?
+- Active Listening: Did they respond to signals and adapt, or talk over the prospect?
 
-# OUTPUT FORMAT
-Provide feedback in the following structure:
-- Use second person ("you") to address me directly.
-- Start with the numerical scores for each dimension.
-- Then provide a bullet-point list of specific, actionable areas for improvement.
-- Each point must reference a specific moment in the conversation.
-- Do not soften or sugar-coat the feedback. If the performance was poor, say it plainly.
-- End with 1-2 things I did well (if any).
-- Use stars ("*") for your bullet points.
+Rules:
+- Be direct and honest. Do not soften poor performance.
+- Provide 3–5 improvements, each referencing a specific moment.
+- Provide 1–2 highlights (only if genuinely warranted; omit or note "none" if performance was consistently poor).
+- overall_score must equal the average of the 6 dimension scores, rounded to one decimal.

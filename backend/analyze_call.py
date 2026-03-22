@@ -1,45 +1,32 @@
+import json
 from backend.llm import LLM
-from backend._types import Message, MessageContent, InputAudio, Log
+from backend._types import Message, Log
+
 
 class AnalyzeCall(object):
     def __init__(self, call_logs: list[Log]):
         self.llm = LLM()
         self.call_logs = call_logs
 
-    def generate_summary(self):
+    def generate_summary(self) -> dict:
         with open("backend/prompts/summary_prompt.txt", "r") as f:
             user_prompt = f.read()
 
         system_prompt = (
             "You are an expert sales coach evaluating a sales rep's performance. "
-            "You will be given a conversation between a sales rep and a prospect."
+            "You will be given a conversation transcript between a sales rep and a prospect. "
+            "You must respond only with valid JSON — no markdown, no prose."
         )
         messages = [Message(role="system", content=system_prompt)]
-        for i in range(len(self.call_logs)):
-            if self.call_logs[i].role == "user":
-                messages.extend([
-                    Message(
-                        role="user",
-                        content=[
-                            MessageContent(
-                                type="input_audio",
-                                input_audio=InputAudio(
-                                    data=self.call_logs[i].audio,
-                                    format='wav',
-                                )
-                            )
-                        ]
-                    ),
-                    Message(
-                        role=self.call_logs[i].role,
-                        content=f"TRANSCRIPTION (me, sales rep): {self.call_logs[i].transcription}"
-                    )
-                ])
+        for log in self.call_logs:
+            if log.role == "user":
+                messages.append(Message(role="user", content=f"SALES REP: {log.transcription}"))
             else:
-                messages.append(Message(
-                    role="user",
-                    content=f"TRANSCRIPTION (prospect): {self.call_logs[i].transcription}"
-                ))
-
+                messages.append(Message(role="user", content=f"PROSPECT: {log.transcription}"))
         messages.append(Message(role="user", content=user_prompt))
-        return self.llm.get_text_from_speech(messages=messages)
+
+        raw = self.llm.get_text_from_speech(
+            messages=messages,
+            response_format={"type": "json_object"},
+        )
+        return json.loads(raw)
