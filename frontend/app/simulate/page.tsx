@@ -8,12 +8,63 @@ import {
   getConversation,
   type ScenarioParams,
   type FormData,
+  type ProspectBrief,
 } from "@/lib/api";
 
 type Phase = "setup" | "connecting" | "live" | "ended";
 
+const ACRONYMS = new Set(["cfo", "cto", "ceo", "vp", "hr", "it"]);
+
+const INTEL_SIGNALS: { label: string; key: string }[] = [
+  { label: "Pain Severity", key: "pain_severity" },
+  { label: "Budget", key: "budget_status" },
+  { label: "Timeline", key: "decision_timeline" },
+  { label: "Engagement", key: "willingness_to_engage" },
+  { label: "Deal Size", key: "deal_size" },
+  { label: "Company", key: "company_size" },
+  { label: "Prior Contact", key: "prior_contact" },
+  { label: "Committee", key: "buying_committee_size" },
+];
+
+function signalColor(key: string, value: string): string {
+  const v = (value || "").toLowerCase();
+  switch (key) {
+    case "pain_severity":
+      if (v.includes("hair") || v.includes("critical")) return "text-red-400";
+      if (v.includes("moderate")) return "text-orange-400";
+      return "text-yellow-400";
+    case "budget_status":
+      if (v === "approved" || v.includes("surplus")) return "text-green-400";
+      if (v.includes("pending")) return "text-yellow-400";
+      return "text-red-400";
+    case "decision_timeline":
+      if (v.includes("urgent") || v.includes("week")) return "text-red-400";
+      if (v.includes("month")) return "text-orange-400";
+      if (v.includes("quarter")) return "text-yellow-400";
+      return "text-gray-400";
+    case "willingness_to_engage":
+      if (v === "open") return "text-green-400";
+      if (v === "cautious") return "text-yellow-400";
+      if (v === "resistant" || v === "hostile") return "text-red-400";
+      return "text-gray-300";
+    default:
+      return "text-gray-200";
+  }
+}
+
+const SETUP_STEPS = [
+  "Analyzing your parameters...",
+  "Generating prospect persona...",
+  "Briefing your prospect...",
+  "Establishing connection...",
+];
+
 function formatLabel(s: string): string {
-  return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  return s
+    .replace(/_/g, " ")
+    .split(" ")
+    .map((w) => ACRONYMS.has(w.toLowerCase()) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
 }
 
 // ── WAV encoding ────────────────────────────────────────────────────────────
@@ -73,15 +124,23 @@ export default function SimulatePage() {
   const [isRecording, setIsRecording] = useState(false);
   const [micLocked, setMicLocked] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [setupStep, setSetupStep] = useState(0);
+  const [brief, setBrief] = useState<ProspectBrief | null>(null);
+  const [intelOpen, setIntelOpen] = useState(true);
 
   const wsRef = useRef<WebSocket | null>(null);
+  const sessionIdRef = useRef<number | null>(null);
 
-  // Web Audio recording
+  // Web Audio recording refs
   const audioCtxRef = useRef<AudioContext | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const samplesRef = useRef<Float32Array[]>([]);
+
+  // Streaming playback refs
+  const playbackCtxRef = useRef<AudioContext | null>(null);
+  const nextStartTimeRef = useRef<number>(0);
 
   useEffect(() => {
     fetchParams()
@@ -99,6 +158,15 @@ export default function SimulatePage() {
       .catch(() => setError("Could not connect to backend. Is it running?"));
   }, []);
 
+  useEffect(() => {
+    if (phase !== "connecting") return;
+    setSetupStep(0);
+    const id = setInterval(() => {
+      setSetupStep((prev) => Math.min(prev + 1, SETUP_STEPS.length - 1));
+    }, 800);
+    return () => clearInterval(id);
+  }, [phase]);
+
   const refreshTranscript = useCallback(async () => {
     try {
       const { data } = await getConversation();
@@ -113,36 +181,80 @@ export default function SimulatePage() {
     }
   }, []);
 
-  const playAudio = useCallback(async (blob: Blob) => {
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    setMicLocked(true);
-    audio.onended = () => {
-      URL.revokeObjectURL(url);
-      setMicLocked(false);
-      refreshTranscript();
-    };
-    await audio.play().catch(() => {
-      setMicLocked(false);
-      URL.revokeObjectURL(url);
-    });
-  }, [refreshTranscript]);
+  const scheduleChunk = useCallback((rawPcm: ArrayBuffer) => {
+    const ctx = playbackCtxRef.current;
+    if (!ctx) return;
+    const view = new DataView(rawPcm);
+    const samples = new Float32Array(rawPcm.byteLength / 2);
+    for (let i = 0; i < samples.length; i++)
+      samples[i] = view.getInt16(i * 2, true) / 32768;
+
+    const buf = ctx.createBuffer(1, samples.length, 24000);
+    buf.getChannelData(0).set(samples);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    const t = Math.max(ctx.currentTime, nextStartTimeRef.current);
+    src.start(t);
+    nextStartTimeRef.current = t + buf.duration;
+  }, []);
 
   const handleStart = async () => {
     setError(null);
     setPhase("connecting");
     try {
-      await submitForm(form);
+      const formRes = await submitForm(form);
+      sessionIdRef.current = formRes.session_id ?? null;
+      setBrief({
+        scenario_params: formRes.scenario_params,
+        prospect_role: formRes.prospect_role,
+        prospect_name: formRes.prospect_name,
+        prospect_company: formRes.prospect_company,
+      });
+      setIntelOpen(true);
       const ws = createWebSocket();
       wsRef.current = ws;
       ws.onopen = () => setPhase("live");
       ws.onmessage = async (event) => {
-        if (event.data instanceof Blob) {
-          await playAudio(event.data);
+        if (typeof event.data === "string") {
+          try {
+            const msg = JSON.parse(event.data);
+            if (msg.type === "assistant_text") {
+              // Prospect response ready — append immediately below the user placeholder
+              setTranscript((prev) => [...prev, { role: "prospect", text: msg.assistant }]);
+            } else if (msg.type === "user_text") {
+              // ASR finished — replace the speaking placeholder with real transcription
+              setTranscript((prev) =>
+                prev.map((m) =>
+                  m.text === "[Speaking — waiting for prospect...]"
+                    ? { ...m, text: msg.user || "(no transcription)" }
+                    : m
+                )
+              );
+            } else if (msg.type === "done") {
+              setMicLocked(true);
+              const ctx = playbackCtxRef.current;
+              const delay = ctx ? Math.max(0, nextStartTimeRef.current - ctx.currentTime) : 0;
+              setTimeout(() => {
+                playbackCtxRef.current = null;
+                nextStartTimeRef.current = 0;
+                setMicLocked(false);
+              }, delay * 1000 + 150);
+            }
+          } catch {
+            // ignore malformed JSON
+          }
+        } else if (event.data instanceof Blob) {
+          if (!playbackCtxRef.current) {
+            playbackCtxRef.current = new AudioContext({ sampleRate: 24000 });
+            nextStartTimeRef.current = 0;
+          }
+          const buf = await event.data.arrayBuffer();
+          scheduleChunk(buf);
         }
       };
       ws.onerror = () => { setError("WebSocket error"); setPhase("setup"); };
-      ws.onclose = () => { if (phase !== "ended") setPhase("ended"); };
+      ws.onclose = () => { setPhase((p) => p !== "ended" ? "ended" : p); };
     } catch {
       setError("Failed to start simulation");
       setPhase("setup");
@@ -186,8 +298,7 @@ export default function SimulatePage() {
     const chunks = samplesRef.current;
     const totalLen = chunks.reduce((n, c) => n + c.length, 0);
 
-    if (totalLen < sampleRate * 0.3) {
-      // Less than 300ms — too short, discard
+    if (totalLen < sampleRate * 0.8) {
       setIsRecording(false);
       return;
     }
@@ -279,9 +390,46 @@ export default function SimulatePage() {
         )}
 
         {phase === "connecting" && (
-          <div className="text-center py-20">
-            <div className="animate-pulse text-xl">Setting up your scenario...</div>
-            <p className="text-gray-400 mt-2">Generating prospect persona and connecting</p>
+          <div className="flex flex-col items-center py-12 gap-8">
+            <div className="relative w-20 h-20">
+              <div className="absolute inset-0 border-4 border-gray-700 rounded-full" />
+              <div className="absolute inset-0 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <div className="absolute inset-0 flex items-center justify-center text-2xl">📞</div>
+            </div>
+
+            <div className="text-center space-y-1">
+              <p className="text-xl font-medium text-white">{SETUP_STEPS[setupStep]}</p>
+              <p className="text-sm text-gray-500">This takes a moment to ensure a realistic simulation</p>
+            </div>
+
+            <div className="flex gap-2">
+              {SETUP_STEPS.map((_, i) => (
+                <div
+                  key={i}
+                  className={`h-1.5 rounded-full transition-all duration-500 ${
+                    i <= setupStep ? "w-6 bg-blue-500" : "w-1.5 bg-gray-600"
+                  }`}
+                />
+              ))}
+            </div>
+
+            <div className="bg-gray-800 rounded-xl p-5 w-full border border-gray-700/50">
+              <p className="text-xs text-gray-500 uppercase tracking-widest mb-3">Your Scenario</p>
+              <div className="space-y-2.5">
+                {[
+                  ["Prospect", formatLabel(form.prospect_role)],
+                  ["Industry", formatLabel(form.industry)],
+                  ["Mood", formatLabel(form.mood)],
+                  ["Objection", formatLabel(form.objection_type)],
+                  ["Deal Stage", formatLabel(form.deal_stage)],
+                ].map(([label, value]) => (
+                  <div key={label} className="flex justify-between text-sm">
+                    <span className="text-gray-400">{label}</span>
+                    <span className="text-white font-medium">{value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
@@ -299,6 +447,46 @@ export default function SimulatePage() {
                 End Call
               </button>
             </div>
+
+            {brief && (
+              <div className="bg-gray-800 rounded-xl overflow-hidden">
+                <button
+                  onClick={() => setIntelOpen((v) => !v)}
+                  className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-gray-200 hover:text-white transition-colors"
+                >
+                  <span>🎯 Prospect Intel</span>
+                  <span className="text-gray-500 text-xs">{intelOpen ? "hide ▲" : "show ▼"}</span>
+                </button>
+                {intelOpen && (
+                  <div className="px-4 pb-4 space-y-3">
+                    {(brief.prospect_name || brief.prospect_company) && (
+                      <div className="flex items-center gap-3 pb-2 border-b border-gray-700">
+                        <div className="w-10 h-10 rounded-full bg-blue-700 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                          {brief.prospect_name ? brief.prospect_name.charAt(0).toUpperCase() : "?"}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-white">{brief.prospect_name}</p>
+                          <p className="text-xs text-gray-400">
+                            {formatLabel(brief.scenario_params.prospect_role || "")}
+                            {brief.prospect_company ? ` · ${brief.prospect_company}` : ""}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-2">
+                      {INTEL_SIGNALS.map(({ label, key }) => (
+                        <div key={key} className="bg-gray-700/60 rounded-lg p-2.5">
+                          <p className="text-xs text-gray-500 mb-0.5">{label}</p>
+                          <p className={`text-xs font-semibold ${signalColor(key, brief.scenario_params[key])}`}>
+                            {formatLabel(brief.scenario_params[key] || "—")}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="bg-gray-800 rounded-xl p-4 min-h-[200px] max-h-[400px] overflow-y-auto">
               {transcript.length === 0 ? (
@@ -353,7 +541,7 @@ export default function SimulatePage() {
             <p className="text-gray-400">Great practice! Review your performance or start another call.</p>
             <div className="flex gap-4 justify-center">
               <Link
-                href="/review"
+                href={sessionIdRef.current ? `/history/${sessionIdRef.current}` : "/review"}
                 className="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-xl font-medium transition-colors"
               >
                 Review &amp; Get Coaching

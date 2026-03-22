@@ -11,7 +11,18 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.simulator import Simulator
 from backend.analyze_call import AnalyzeCall
-from backend._types import UserParams
+from backend._types import UserParams, Log
+from backend.database import (
+    init_db,
+    create_session,
+    insert_two_turns,
+    update_session_status,
+    save_analysis,
+    list_sessions,
+    get_session,
+    get_turns,
+    get_analysis,
+)
 
 import logging
 logging.basicConfig(
@@ -41,8 +52,10 @@ current_user_params: Optional[UserParams] = None
 
 @app.on_event("startup")
 async def startup_event():
+    init_db()
     app.state.simulator = None
     app.state.simulator_task = None
+    app.state.current_session_id = None
 
 
 @app.get("/")
@@ -84,6 +97,10 @@ async def analyze_conversation():
         analysis = ac.generate_summary()
     except (IndexError, ValueError) as e:
         raise HTTPException(status_code=400, detail=str(e))
+    # Persist to DB
+    session_id = getattr(app.state, "current_session_id", None)
+    if session_id:
+        await asyncio.to_thread(save_analysis, session_id, analysis)
     return {"analysis": analysis}
 
 
@@ -117,6 +134,11 @@ async def submit_form(
 
     _empty_queue(input_queue)
     _empty_queue(output_queue)
+
+    # Create a new session in DB
+    session_id = await asyncio.to_thread(create_session, current_user_params)
+    app.state.current_session_id = session_id
+
     sim = Simulator(
         user_params=current_user_params,
         stream=False,
@@ -131,8 +153,59 @@ async def submit_form(
     return {
         "message": "Simulator started successfully.",
         "params": current_user_params.to_dict(),
+        "session_id": session_id,
+        "scenario_params": sim.scenario_params,
+        "prospect_role": sim.prospect_role,
+        "prospect_name": sim.prospect_name,
+        "prospect_company": sim.prospect_company,
     }
 
+
+# ── Session history endpoints ─────────────────────────────────────────────────
+
+@app.get("/sessions")
+async def list_sessions_endpoint():
+    sessions = await asyncio.to_thread(list_sessions)
+    return {"sessions": sessions}
+
+
+@app.get("/sessions/{session_id}")
+async def get_session_detail(session_id: int):
+    session = await asyncio.to_thread(get_session, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    turns = await asyncio.to_thread(get_turns, session_id)
+    analysis = await asyncio.to_thread(get_analysis, session_id)
+    return {"session": session, "turns": turns, "analysis": analysis}
+
+
+@app.get("/sessions/{session_id}/analysis")
+async def get_session_analysis_endpoint(session_id: int):
+    session = await asyncio.to_thread(get_session, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    # Return cached analysis if available
+    analysis = await asyncio.to_thread(get_analysis, session_id)
+    if analysis:
+        return {"analysis": analysis}
+    # Otherwise run it against stored turns
+    turns = await asyncio.to_thread(get_turns, session_id)
+    if not turns:
+        raise HTTPException(status_code=400, detail="No turns in this session")
+    logs = [
+        Log(role=t["role"], timestamp=t["timestamp"], audio="", transcription=t["transcription"])
+        for t in turns
+    ]
+    ac = AnalyzeCall(call_logs=logs)
+    try:
+        result = ac.generate_summary()
+    except (IndexError, ValueError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    await asyncio.to_thread(save_analysis, session_id, result)
+    return {"analysis": result}
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _extract_b64_from_text(t: str) -> Optional[str]:
     s = t.strip()
@@ -200,14 +273,31 @@ async def ws_stream(ws: WebSocket):
                 item = await output_queue.get()
                 if not item:
                     continue
-                b64 = item.get("data")
-                if not b64:
-                    continue
-                try:
-                    chunk_bytes = base64.b64decode(b64, validate=True)
-                except (binascii.Error, ValueError):
-                    continue
-                await ws.send_bytes(chunk_bytes)
+                if item.get("type") == "assistant_text":
+                    await ws.send_text(json.dumps({
+                        "type": "assistant_text",
+                        "assistant": item["assistant"],
+                    }))
+                elif item.get("type") == "user_text":
+                    await ws.send_text(json.dumps({
+                        "type": "user_text",
+                        "user": item["user"],
+                    }))
+                elif item.get("type") == "done":
+                    await ws.send_text('{"type":"done"}')
+                    # Persist the just-completed turn pair to DB
+                    session_id = getattr(app.state, "current_session_id", None)
+                    sim = getattr(app.state, "simulator", None)
+                    if session_id and sim and len(sim.simulation_logs) >= 2:
+                        user_log = sim.simulation_logs[-2]
+                        asst_log = sim.simulation_logs[-1]
+                        await asyncio.to_thread(insert_two_turns, session_id, user_log, asst_log)
+                elif item.get("data"):
+                    try:
+                        chunk_bytes = base64.b64decode(item["data"], validate=True)
+                    except (binascii.Error, ValueError):
+                        continue
+                    await ws.send_bytes(chunk_bytes)
         except WebSocketDisconnect:
             stop.set()
         except Exception:
@@ -220,6 +310,11 @@ async def ws_stream(ws: WebSocket):
     for t in (t_read, t_write):
         t.cancel()
     await asyncio.gather(t_read, t_write, return_exceptions=True)
+
+    # Mark session as completed on clean close
+    session_id = getattr(app.state, "current_session_id", None)
+    if session_id:
+        await asyncio.to_thread(update_session_status, session_id, "completed")
 
     try:
         await ws.close()

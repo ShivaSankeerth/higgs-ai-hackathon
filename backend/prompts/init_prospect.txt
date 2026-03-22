@@ -19,3 +19,9 @@ Generate a prompt for the above scenario using the following guidelines:
 - Include specific details: company name, budget concerns, competitor mentions, timeline pressures, past bad experiences — whatever fits the scenario.
 - The prospect should feel like a real person with real business pressures, not a caricature.
 - Do not be overly verbose; include enough details to steer the voice model effectively.
+
+# OUTPUT FORMAT
+Return a valid JSON object with exactly three keys:
+- "name": The prospect's full name (e.g., "Sarah Chen")
+- "company": The prospect's company name (e.g., "Acme Technologies")
+- "prompt": The full character prompt starting with "You are [name]..."

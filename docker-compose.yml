@@ -24,9 +24,11 @@ services:
     environment:
       - BASE_URL=${BASE_URL}
       - API_KEY=${API_KEY}
+      - BOSONAI_API_KEY=${BOSONAI_API_KEY}
       - PYTHONUNBUFFERED=1
     volumes:
       - ./backend/recordings:/app/backend/recordings
+      - ./data:/app/data
     networks:
       - default
 

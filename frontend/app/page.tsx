@@ -13,7 +13,7 @@ export default function Home() {
           matters.
         </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
           <Link
             href="/simulate"
             className="group block p-8 bg-gray-800 border border-gray-700 rounded-2xl hover:border-blue-500 transition-all"
@@ -39,6 +39,18 @@ export default function Home() {
             <p className="text-gray-400 text-sm">
               Get AI-powered scoring and coaching feedback on your practice
               calls.
+            </p>
+          </Link>
+          <Link
+            href="/history"
+            className="group block p-8 bg-gray-800 border border-gray-700 rounded-2xl hover:border-purple-500 transition-all"
+          >
+            <div className="text-3xl mb-4">📋</div>
+            <h2 className="text-xl font-semibold mb-2 group-hover:text-purple-400 transition-colors">
+              Session History
+            </h2>
+            <p className="text-gray-400 text-sm">
+              Browse past practice calls and run coaching analysis on any session.
             </p>
           </Link>
         </div>
